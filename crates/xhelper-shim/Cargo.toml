@@ -1,0 +1,13 @@
+[package]
+name = "xhelper-shim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lib]
+# 产物 libxhelper.so，部署时改名为 XHelper.dll.so 放到 XGameMonitor 旁边。
+name = "xhelper"
+crate-type = ["cdylib"]
