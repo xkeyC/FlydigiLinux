@@ -28,6 +28,12 @@ in
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
       description = "FlydigiLinux 包。";
     };
+    dotnet = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.dotnet-runtime_10;
+      defaultText = lib.literalExpression "pkgs.dotnet-runtime_10";
+      description = "运行官方 .NET mod（ForzaDualSense、XGameMonitor）的 dotnet；net6 的 mod 通过 DOTNET_ROLL_FORWARD=Major 运行。";
+    };
     wine = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = null;
@@ -43,8 +49,9 @@ in
 
     # XGameMonitor 要读游戏内存；ptrace_scope=1 时靠 CAP_SYS_PTRACE，
     # wrapper 把它作为 ambient capability 交给 flydigid，flydigid 再传给 mod 进程。
+    # security.wrappers 只接受 ELF，所以指向 wrapProgram 包装前的二进制，环境变量由服务提供。
     security.wrappers.flydigid = {
-      source = "${cfg.package}/bin/flydigid";
+      source = "${cfg.package}/bin/.flydigid-wrapped";
       capabilities = "cap_sys_ptrace+eip";
       owner = "root";
       group = "root";
@@ -55,7 +62,8 @@ in
       wantedBy = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
-      path = lib.optional (cfg.wine != null) cfg.wine;
+      path = [ cfg.dotnet ] ++ lib.optional (cfg.wine != null) cfg.wine;
+      environment.FLYDIGI_XHELPER = "${cfg.package}/lib/flydigi-linux/libxhelper.so";
       serviceConfig = {
         ExecStart = "${config.security.wrapperDir}/flydigid";
         Restart = "on-failure";
