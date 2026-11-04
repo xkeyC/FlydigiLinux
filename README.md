@@ -1,5 +1,7 @@
 # FlydigiLinux
 
+中文 | [English](README.en.md)
+
 Linux 版飞智空间站。当前目标是复刻 **力回馈扳机** 相关功能：获取飞智官方的适配游戏列表，下载、安装、启用、卸载官方 mod，并在游戏运行时驱动 APEX 5 的扳机；另提供全局 DS 模式作为没有官方 mod 时的备用方案。其他功能（按键映射、灯效、屏幕等）在界面里留了位置，后续再复刻。
 
 原则是 **尽量运行飞智的原版 mod**，本项目只复刻 Space Station 服务端（SpaceStationService）那一侧。
@@ -60,7 +62,7 @@ FLYDIGI_XHELPER=$PWD/target/debug/libxhelper.so cargo run -p flydigid
 cargo run -p flydigi-gui
 ```
 
-数据位置：游戏列表与 mod 在 `~/.local/share/flydigi-linux/`，状态在 `~/.config/flydigi-linux/state.json`，GUI 语言在 `~/.config/flydigi-linux/gui.json`。
+数据位置：游戏列表与 mod 在 `~/.local/share/flydigi-linux/`，状态在 `~/.config/flydigi-linux/state.json`，GUI 语言在 `~/.config/flydigi-linux/gui.json`，图片缓存在 `~/.cache/flydigi-linux/images/`。
 
 ## 致谢与许可
 
