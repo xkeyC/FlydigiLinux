@@ -26,16 +26,30 @@ rustPlatform.buildRustPackage {
   desktopItems = [
     (makeDesktopItem {
       name = "flydigi-linux";
-      desktopName = "飞智空间站 Linux";
-      genericName = "Flydigi Space Station";
-      comment = "飞智手柄力回馈扳机适配与 DS 模式";
+      desktopName = "Flydigi Space Station for Linux";
+      genericName = "Flydigi Controller Settings";
+      comment = "Force-feedback triggers (official Flydigi mods) and DS mode for Flydigi controllers";
       exec = "flydigi-gui";
       icon = "input-gaming";
-      categories = [
-        "Game"
-        "Settings"
+      categories = [ "Game" ];
+      keywords = [
+        "Flydigi"
+        "APEX"
+        "gamepad"
+        "controller"
+        "trigger"
+        "DualSense"
+        "飞智"
+        "空间站"
+        "手柄"
+        "扳机"
       ];
       startupWMClass = "flydigi-linux";
+      extraConfig = {
+        "Name[zh_CN]" = "飞智空间站 Linux";
+        "GenericName[zh_CN]" = "飞智手柄设置";
+        "Comment[zh_CN]" = "飞智手柄力回馈扳机适配（官方 mod）与 DS 模式";
+      };
     })
   ];
 
