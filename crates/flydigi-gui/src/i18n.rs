@@ -149,6 +149,7 @@ fn english(zh: &str) -> Option<&'static str> {
         "信息" => "Info",
         "注意事项" => "Notes",
         "更新说明" => "Changelog",
+        "点击任意处或按 Esc 关闭" => "Click anywhere or press Esc to close",
         "进程名" => "Process",
         "官方 mod" => "Flydigi mod",
         "最新版本" => "Latest",

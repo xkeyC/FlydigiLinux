@@ -86,16 +86,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, games: &[GameView], status: Option
     let busy = |id: i64| status.is_some_and(|s| s.jobs.iter().any(|(j, _)| *j == id));
     let ds_on = status.is_some_and(|s| s.ds_mode.enabled);
 
-    if let Some(view) = app.selected.and_then(|id| games.iter().find(|g| g.game.id == id)) {
-        let view = view.clone();
-        egui::Panel::right("detail")
-            .resizable(false)
-            .exact_size(360.0)
-            .frame(egui::Frame::new().fill(widgets::BG).inner_margin(Margin::same(14)).corner_radius(CornerRadius::same(10)))
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| detail(app, ui, &view, status, busy(view.game.id), ds_on));
-            });
-    }
+    // 详情以叠加层浮在卡片墙右侧，不占卡片墙的宽度，开关时卡片位置不变
+    let overlay_area = egui::Rect::from_min_max(egui::pos2(ui.max_rect().left(), ui.cursor().top()), ui.max_rect().max);
 
     egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
         let available = ui.available_width() - 2.0;
@@ -110,6 +102,47 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, games: &[GameView], status: Option
             });
         }
     });
+
+    detail_overlay(app, ui, overlay_area, games, status, ds_on);
+}
+
+const DETAIL_W: f32 = 380.0;
+
+fn detail_overlay(app: &mut App, ui: &mut egui::Ui, area: egui::Rect, games: &[GameView], status: Option<&Status>, ds_on: bool) {
+    // 大图打开时 Esc 只关大图
+    if app.lightbox.is_none() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        app.selected = None;
+    }
+    if app.selected.is_some() {
+        app.detail_last = app.selected;
+    }
+    // 关闭时用上一次的游戏把滑出动画播完
+    let open = ui.ctx().animate_bool_with_time(egui::Id::unique("game_detail_slide"), app.selected.is_some(), 0.16);
+    if open <= 0.0 {
+        return;
+    }
+    let Some(view) = app.detail_last.and_then(|id| games.iter().find(|g| g.game.id == id)).cloned() else {
+        return;
+    };
+    let busy = status.is_some_and(|s| s.jobs.iter().any(|(j, _)| *j == view.game.id));
+    let width = DETAIL_W.min(area.width());
+    let eased = 1.0 - (1.0 - open).powi(3);
+    let pos = egui::pos2(area.right() - width * eased, area.top());
+    egui::Area::new(egui::Id::unique("game_detail"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(pos)
+        .constrain(false)
+        .show(ui.ctx(), |ui| {
+            egui::Frame::window(ui.style())
+                .fill(widgets::BG)
+                .corner_radius(CornerRadius::same(10))
+                .inner_margin(Margin::same(14))
+                .show(ui, |ui| {
+                    ui.set_width(width - 28.0);
+                    ui.set_height(area.height() - 30.0);
+                    egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| detail(app, ui, &view, status, busy, ds_on));
+                });
+        });
 }
 
 fn install_state(view: &GameView) -> Option<(String, Color32)> {
@@ -258,7 +291,14 @@ fn detail(app: &mut App, ui: &mut egui::Ui, view: &GameView, status: Option<&Sta
                     ui.add(egui::Label::new(text).wrap());
                 }
                 NoticePart::Image(url) => {
-                    ui.add(egui::Image::new(url).max_width(width).corner_radius(CornerRadius::same(6)));
+                    let image = egui::Image::new(url.as_str())
+                        .max_width(width)
+                        .corner_radius(CornerRadius::same(6))
+                        .sense(Sense::click());
+                    let response = ui.add(image).on_hover_cursor(egui::CursorIcon::ZoomIn);
+                    if response.clicked() {
+                        app.lightbox = Some(url);
+                    }
                 }
             }
         }
@@ -346,5 +386,48 @@ fn detail(app: &mut App, ui: &mut egui::Ui, view: &GameView, status: Option<&Sta
         if let Some(cmd) = &active.mod_command {
             ui.label(RichText::new(cmd).monospace().size(11.0).color(TEXT_DIM));
         }
+    }
+}
+
+/// 全窗口查看大图：暗色背景，图片按窗口缩放居中，点击任意处或按 Esc 关闭。
+pub fn lightbox(app: &mut App, ctx: &egui::Context) {
+    let Some(url) = app.lightbox.clone() else {
+        return;
+    };
+    let screen = ctx.content_rect();
+    let mut close = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    egui::Area::new(egui::Id::unique("notice_lightbox"))
+        .order(egui::Order::Tooltip)
+        .fixed_pos(screen.min)
+        .show(ctx, |ui| {
+            let (rect, response) = ui.allocate_exact_size(screen.size(), Sense::click());
+            ui.painter().rect_filled(rect, CornerRadius::ZERO, Color32::from_black_alpha(215));
+            let max = rect.size() * 0.92 - vec2(0.0, 30.0);
+            match egui::Image::new(url.as_str()).load_for_size(ctx, max) {
+                Ok(egui::load::TexturePoll::Ready { texture }) if texture.size.x > 0.0 => {
+                    // 缩小到能放下，小图最多放大两倍
+                    let scale = (max.x / texture.size.x).min(max.y / texture.size.y).min(2.0);
+                    let size = texture.size * scale;
+                    let image_rect = egui::Rect::from_center_size(rect.center() - vec2(0.0, 12.0), size);
+                    ui.put(image_rect, egui::Image::from_texture(texture).fit_to_exact_size(size).corner_radius(CornerRadius::same(6)));
+                }
+                Ok(_) => {
+                    ui.put(egui::Rect::from_center_size(rect.center(), vec2(32.0, 32.0)), egui::Spinner::new().size(32.0));
+                }
+                Err(e) => {
+                    ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, e.to_string(), egui::FontId::proportional(14.0), BAD);
+                }
+            }
+            ui.painter().text(
+                egui::pos2(rect.center().x, rect.bottom() - 22.0),
+                egui::Align2::CENTER_CENTER,
+                tr("点击任意处或按 Esc 关闭"),
+                egui::FontId::proportional(13.0),
+                Color32::from_gray(190),
+            );
+            close |= response.clicked();
+        });
+    if close {
+        app.lightbox = None;
     }
 }

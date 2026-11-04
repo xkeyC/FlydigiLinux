@@ -85,6 +85,10 @@ pub struct App {
     pub search: String,
     pub filter: Filter,
     pub selected: Option<i64>,
+    /// 详情叠加层最后显示的游戏，关闭动画期间继续用它
+    pub detail_last: Option<i64>,
+    /// 正在全窗口查看的说明图片
+    pub lightbox: Option<String>,
     pub dir_edit: String,
     pub dir_edit_for: Option<i64>,
     pub test_side: u8,
@@ -107,6 +111,8 @@ impl App {
             search: String::new(),
             filter: Filter::All,
             selected: None,
+            detail_last: None,
+            lightbox: None,
             dir_edit: String::new(),
             dir_edit_for: None,
             test_side: 2,
@@ -166,6 +172,8 @@ impl eframe::App for App {
                     _ => {}
                 }
             });
+
+        pages::games::lightbox(self, ui.ctx());
     }
 }
 
