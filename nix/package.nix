@@ -3,6 +3,8 @@
   pkgs,
   rustPlatform,
   makeWrapper,
+  pkg-config,
+  zstd,
   makeDesktopItem,
   copyDesktopItems,
   dotnet-runtime_10,
@@ -21,7 +23,11 @@ rustPlatform.buildRustPackage {
   nativeBuildInputs = [
     makeWrapper
     copyDesktopItems
+    pkg-config
   ];
+
+  # nixpkgs 的 cargoSetupHook（2026-10 起）设置 ZSTD_SYS_USE_PKG_CONFIG=1，zstd-sys 改用系统 libzstd。
+  buildInputs = [ zstd ];
 
   desktopItems = [
     (makeDesktopItem {
